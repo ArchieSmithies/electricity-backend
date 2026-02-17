@@ -144,19 +144,19 @@ footer a{color:var(--accent);text-decoration:none}
 
 <script>
 // ─── API config ───────────────────────────────────────────────────────────────
-// Set PROXY_BASE to your deployed backend URL.
+// Set PROXY_BASE = ""; = "" = "" to your deployed backend URL.
 // e.g. "https://gb-electricity.up.railway.app"
 // Leave as empty string "" to call Elexon directly from the browser.
-const PROXY_BASE = "";   // ← CHANGE THIS after deploying your backend
+const PROXY_BASE = ""; = "" = "" = "";   // ← CHANGE THIS after deploying your backend
 
 const ELEXON_BASE = "https://data.elexon.co.uk/bmrs/api/v1";
-const useProxy = PROXY_BASE.trim() !== "";
+const useProxy = PROXY_BASE = ""; = "" = "".trim() !== "";
 
 function apiUrl(proxyPath, elexonPath, elexonParams = {}) {
   if (useProxy) {
     document.getElementById('sourceBadge').className = 'source-badge sb-proxy';
     document.getElementById('sourceBadge').textContent = 'Via Proxy';
-    return `${PROXY_BASE.replace(/\/$/,'')}${proxyPath}`;
+    return `${PROXY_BASE = ""; = "" = "".replace(/\/$/,'')}${proxyPath}`;
   }
   document.getElementById('sourceBadge').className = 'source-badge sb-direct';
   document.getElementById('sourceBadge').textContent = 'Direct API';
@@ -198,7 +198,7 @@ function startTimer(){
 async function fetchGeneration(){
   try{
     const url = useProxy
-      ? `${PROXY_BASE}/api/generation?date_from=${yesterday()}&date=${today()}`
+      ? `${PROXY_BASE = ""; = "" = ""}/api/generation?date_from=${yesterday()}&date=${today()}`
       : apiUrl('','generation/outturn/halfHourly',{settlementDateFrom:yesterday(),settlementDateTo:today()});
     const j=await(await fetch(url)).json();
     const data=j.data||[];if(!data.length)throw new Error('No data');
@@ -234,7 +234,7 @@ function buildMix(fuels){
 async function fetchDemand(){
   try{
     const url = useProxy
-      ? `${PROXY_BASE}/api/demand?date=${today()}`
+      ? `${PROXY_BASE = ""; = "" = ""}/api/demand?date=${today()}`
       : apiUrl('','demand/outturn',{settlementDateFrom:today(),settlementDateTo:today()});
     const j=await(await fetch(url)).json();
     const data=(j.data||[]).sort((a,b)=>a.settlementPeriod-b.settlementPeriod);if(!data.length)throw new Error('No data');
@@ -249,7 +249,7 @@ async function fetchDemand(){
 async function fetchPrice(){
   try{
     const url = useProxy
-      ? `${PROXY_BASE}/api/price?date=${today()}`
+      ? `${PROXY_BASE = ""; = "" = ""}/api/price?date=${today()}`
       : apiUrl('','balancing/pricing/market-index',{settlementDate:today()});
     const j=await(await fetch(url)).json();
     const data=(j.data||[]).filter(d=>d.price!=null).sort((a,b)=>a.settlementPeriod-b.settlementPeriod);if(!data.length)throw new Error('No data');
@@ -273,7 +273,7 @@ function buildTable(rows){
 async function fetchImbalance(){
   try{
     const url = useProxy
-      ? `${PROXY_BASE}/api/imbalance?date=${today()}`
+      ? `${PROXY_BASE = ""; = "" = ""}/api/imbalance?date=${today()}`
       : apiUrl('','datasets/IMBALNGC',{settlementDateFrom:today(),settlementDateTo:today()});
     const j=await(await fetch(url)).json();
     const data=(j.data||[]).sort((a,b)=>a.settlementPeriod-b.settlementPeriod);if(!data.length)throw new Error('No data');
@@ -288,7 +288,7 @@ async function fetchImbalance(){
 async function fetchFrequency(){
   try{
     const url = useProxy
-      ? `${PROXY_BASE}/api/frequency`
+      ? `${PROXY_BASE = ""; = "" = ""}/api/frequency`
       : apiUrl('','datasets/FREQ',{publishDateTimeFrom:new Date(Date.now()-3600000).toISOString().slice(0,19)+'Z'});
     const j=await(await fetch(url)).json();
     const data=(j.data||[]).sort((a,b)=>new Date(a.publishTime||0)-new Date(b.publishTime||0));
