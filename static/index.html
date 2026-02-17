@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UK Electricity Market Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0a0e1a;--surface:#111827;--surface2:#1a2236;--border:#1f2e47;--accent:#3b82f6;--text:#e2e8f0;--muted:#64748b;--danger:#ef4444}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#10b981);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.logo h1{font-size:17px;font-weight:700}.logo p{font-size:11px;color:var(--muted)}
+.hright{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.live-badge{display:flex;align-items:center;gap:6px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#10b981;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#10b981;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.refresh-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;transition:.2s}
+.refresh-btn:hover{background:var(--accent);border-color:var(--accent)}
+.small{font-size:11px;color:var(--muted)}
+.source-badge{font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600}
+.sb-proxy{background:rgba(16,185,129,.15);color:#10b981}
+.sb-direct{background:rgba(245,158,11,.15);color:#f59e0b}
+.main{padding:20px;max-width:1600px;margin:0 auto}
+.sp-bar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 20px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.sp-info{display:flex;gap:28px;flex-wrap:wrap}
+.sp-item{display:flex;flex-direction:column;gap:2px}
+.sp-label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.sp-value{font-size:16px;font-weight:700}.sp-value.hi{color:var(--accent)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:14px;margin-bottom:18px}
+.kcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden}
+.kcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0}
+.kcard.blue::before{background:#3b82f6}.kcard.green::before{background:#10b981}
+.kcard.amber::before{background:#f59e0b}.kcard.red::before{background:#ef4444}.kcard.purple::before{background:#8b5cf6}
+.kl{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px}
+.kv{font-size:26px;font-weight:800;line-height:1;margin-bottom:4px}.ks{font-size:11px;color:var(--muted)}
+.kicon{position:absolute;top:14px;right:14px;font-size:20px;opacity:.35}
+.delta{font-weight:600}.delta.up{color:#10b981}.delta.down{color:#ef4444}
+.cgrid{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:1000px){.cgrid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px}
+.ch{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.ct{font-size:14px;font-weight:700}.cs{font-size:11px;color:var(--muted);margin-top:3px}
+.badge{font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600;text-transform:uppercase}
+.bb{background:rgba(59,130,246,.15);color:#3b82f6}.bg{background:rgba(16,185,129,.15);color:#10b981}.ba{background:rgba(245,158,11,.15);color:#f59e0b}
+.cw{position:relative;height:230px}.cw.tall{height:270px}
+.mix-layout{display:flex;gap:16px;align-items:center}
+.donut-w{min-width:170px;height:170px}
+.gen-legend{flex:1;display:flex;flex-direction:column;gap:7px}
+.li{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.ll{display:flex;align-items:center;gap:7px}
+.ldot{width:10px;height:10px;border-radius:3px}.lname{font-size:11px;color:var(--muted)}
+.lpct{font-size:12px;font-weight:700}.lmw{font-size:11px;color:var(--muted);min-width:55px;text-align:right}
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;height:100%;color:var(--muted);font-size:12px}
+.spinner{width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err{color:var(--danger);font-size:12px;text-align:center;padding:20px}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{text-align:left;padding:7px 10px;color:var(--muted);font-weight:600;text-transform:uppercase;font-size:10px;border-bottom:1px solid var(--border)}
+.data-table td{padding:7px 10px;border-bottom:1px solid rgba(31,46,71,.5)}
+.data-table tr:hover td{background:var(--surface2)}
+.pup{color:#ef4444;font-weight:700}.pdn{color:#10b981;font-weight:700}
+.freq-display{text-align:center;padding:6px 0}
+.freq-value{font-size:44px;font-weight:900;letter-spacing:-2px;line-height:1}
+.freq-unit{font-size:14px;color:var(--muted);font-weight:400}
+.freq-bar-bg{width:100%;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin:12px 0 4px}
+.freq-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.freq-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted)}
+.fstatus{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;margin-top:8px}
+.fn{background:rgba(16,185,129,.15);color:#10b981}.fl{background:rgba(245,158,11,.15);color:#f59e0b}.fa{background:rgba(239,68,68,.15);color:#ef4444}
+footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-top:1px solid var(--border);margin-top:4px}
+footer a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div><h1>GB Electricity Market</h1><p>Elexon BMRS · 30-min settlement periods</p></div>
+  </div>
+  <div class="hright">
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <span id="sourceBadge" class="source-badge sb-direct">Direct API</span>
+    <div class="small" id="countdown">Next refresh in 30:00</div>
+    <div class="small" id="lastUpd">—</div>
+    <button class="refresh-btn" onclick="fetchAll()">↻ Refresh now</button>
+  </div>
+</header>
+<div class="main">
+  <div class="sp-bar">
+    <div class="sp-info">
+      <div class="sp-item"><div class="sp-label">Settlement Date</div><div class="sp-value hi" id="spDate">—</div></div>
+      <div class="sp-item"><div class="sp-label">Current Period</div><div class="sp-value" id="spPeriod">—</div></div>
+      <div class="sp-item"><div class="sp-label">Period Window</div><div class="sp-value" id="spWindow">—</div></div>
+    </div>
+    <div class="sp-item"><div class="sp-label">Periods per day</div><div class="sp-value">48 × 30 min</div></div>
+  </div>
+  <div class="kpi-grid">
+    <div class="kcard blue"><div class="kicon">🔌</div><div class="kl">Total Generation</div><div class="kv" id="kGen">—</div><div class="ks"><span class="delta" id="kGenD"></span></div></div>
+    <div class="kcard green"><div class="kicon">📊</div><div class="kl">System Demand</div><div class="kv" id="kDem">—</div><div class="ks">Initial national demand outturn</div></div>
+    <div class="kcard amber"><div class="kicon">💷</div><div class="kl">Market Index Price</div><div class="kv" id="kPrice">—</div><div class="ks"><span class="delta" id="kPriceD"></span></div></div>
+    <div class="kcard green"><div class="kicon">🌬️</div><div class="kl">Wind Generation</div><div class="kv" id="kWind">—</div><div class="ks" id="kWindP">% of mix</div></div>
+    <div class="kcard purple"><div class="kicon">☀️</div><div class="kl">Solar Generation</div><div class="kv" id="kSolar">—</div><div class="ks" id="kSolarP">% of mix</div></div>
+    <div class="kcard red"><div class="kicon">⚖️</div><div class="kl">Indicated Imbalance</div><div class="kv" id="kImbal">—</div><div class="ks">MW (gen − demand)</div></div>
+  </div>
+  <div class="cgrid">
+    <div class="card">
+      <div class="ch"><div><div class="ct">Generation by Fuel Type — Last 24h</div><div class="cs">Half-hourly stacked outturn by fuel type (FUELHH)</div></div><span class="badge bb">30 min</span></div>
+      <div class="cw tall" id="genW"><div class="loading"><div class="spinner"></div>Loading generation…</div></div>
+    </div>
+    <div class="card">
+      <div class="ch"><div><div class="ct">Current Generation Mix</div><div class="cs">Live fuel breakdown (latest SP)</div></div><span class="badge bg">Live</span></div>
+      <div id="mixW"><div class="loading" style="height:200px"><div class="spinner"></div>Loading mix…</div></div>
+    </div>
+  </div>
+  <div class="cgrid">
+    <div class="card">
+      <div class="ch"><div><div class="ct">System Demand — Today</div><div class="cs">INDO — Initial National Demand Outturn per settlement period</div></div><span class="badge bb">30 min</span></div>
+      <div class="cw" id="demW"><div class="loading"><div class="spinner"></div>Loading demand…</div></div>
+    </div>
+    <div class="card">
+      <div class="ch"><div><div class="ct">Market Index Price — Today</div><div class="cs">£/MWh per settlement period (MID)</div></div><span class="badge ba">30 min</span></div>
+      <div class="cw" id="priceW"><div class="loading"><div class="spinner"></div>Loading prices…</div></div>
+    </div>
+  </div>
+  <div class="cgrid">
+    <div class="card">
+      <div class="ch"><div><div class="ct">System Imbalance Volume — Today</div><div class="cs">Indicated imbalance per settlement period (IMBALNGC) · green = surplus, red = deficit</div></div><span class="badge ba">30 min</span></div>
+      <div class="cw" id="imbalW"><div class="loading"><div class="spinner"></div>Loading imbalance…</div></div>
+    </div>
+    <div class="card">
+      <div class="ch"><div><div class="ct">System Frequency</div><div class="cs">GB grid frequency — nominal 50.0 Hz</div></div><span class="badge bg">Instant</span></div>
+      <div id="freqW"><div class="loading" style="height:200px"><div class="spinner"></div>Loading frequency…</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><div><div class="ct">Settlement Period Price Log</div><div class="cs">Most recent half-hour market index prices (MID) · sorted newest first</div></div><span class="badge ba">MID</span></div>
+    <div id="tableW"><div class="loading" style="height:80px"><div class="spinner"></div>Loading…</div></div>
+  </div>
+</div>
+<footer>Data: <a href="https://bmrs.elexon.co.uk" target="_blank">Elexon BMRS Insights API</a> — public, no API key required · 48 settlement periods/day · Data © Elexon Ltd</footer>
+
+<script>
+// ─── API config ───────────────────────────────────────────────────────────────
+// Set PROXY_BASE to your deployed backend URL.
+// e.g. "https://gb-electricity.up.railway.app"
+// Leave as empty string "" to call Elexon directly from the browser.
+const PROXY_BASE = "";   // ← CHANGE THIS after deploying your backend
+
+const ELEXON_BASE = "https://data.elexon.co.uk/bmrs/api/v1";
+const useProxy = PROXY_BASE.trim() !== "";
+
+function apiUrl(proxyPath, elexonPath, elexonParams = {}) {
+  if (useProxy) {
+    document.getElementById('sourceBadge').className = 'source-badge sb-proxy';
+    document.getElementById('sourceBadge').textContent = 'Via Proxy';
+    return `${PROXY_BASE.replace(/\/$/,'')}${proxyPath}`;
+  }
+  document.getElementById('sourceBadge').className = 'source-badge sb-direct';
+  document.getElementById('sourceBadge').textContent = 'Direct API';
+  const url = new URL(`${ELEXON_BASE}/${elexonPath.replace(/^\//,'')}`);
+  Object.entries({...elexonParams, format:'json'}).forEach(([k,v]) => url.searchParams.set(k,v));
+  return url.toString();
+}
+
+// ─── Colours & labels ────────────────────────────────────────────────────────
+const FC={CCGT:'#3b82f6',OCGT:'#60a5fa',OIL:'#1e3a8a',COAL:'#374151',NUCLEAR:'#8b5cf6',WIND:'#10b981',PS:'#6ee7b7',NPSHYD:'#06b6d4',HYDRO:'#22d3ee',OTHER:'#94a3b8',INTFR:'#f97316',INTIRL:'#fb923c',INTNED:'#fdba74',INTEW:'#fcd34d',INTNEM:'#fde68a',BIOMASS:'#a3e635',SOLAR:'#fbbf24'};
+const FL={CCGT:'Gas CCGT',OCGT:'Gas OCGT',OIL:'Oil',COAL:'Coal',NUCLEAR:'Nuclear',WIND:'Wind',PS:'Pumped Storage',NPSHYD:'Hydro (non-PS)',HYDRO:'Hydro',OTHER:'Other',INTFR:'France IC',INTIRL:'Ireland IC',INTNED:'Netherlands IC',INTEW:'E-W IC',INTNEM:'NEMO IC',BIOMASS:'Biomass',SOLAR:'Solar'};
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let gC=null,dC=null,pC=null,iC=null,prevGen=null,prevPrice=null,timer=null,secs=1800;
+
+// ─── Utils ───────────────────────────────────────────────────────────────────
+function fmt(n,d=0){if(n==null||isNaN(n))return'—';return Number(n).toLocaleString('en-GB',{minimumFractionDigits:d,maximumFractionDigits:d})}
+function fmtT(iso){if(!iso)return'—';return new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})}
+function spL(sp){const h=Math.floor((sp-1)*.5),m=((sp-1)%2)*30;return`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`}
+function today(){return new Date().toISOString().slice(0,10)}
+function yesterday(){return new Date(Date.now()-86400000).toISOString().slice(0,10)}
+function cdOpts(){return{responsive:true,maintainAspectRatio:false,animation:{duration:400},plugins:{legend:{display:false},tooltip:{backgroundColor:'#111827',borderColor:'#1f2e47',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8',padding:10}},scales:{x:{grid:{color:'rgba(31,46,71,.6)'},ticks:{color:'#64748b',font:{size:10},maxRotation:0,autoSkip:true,maxTicksLimit:12}},y:{grid:{color:'rgba(31,46,71,.6)'},ticks:{color:'#64748b',font:{size:10}}}}}}
+
+function updateSP(){
+  const n=new Date(),um=n.getUTCHours()*60+n.getUTCMinutes(),sp=Math.floor(um/30)+1;
+  const sh=Math.floor((sp-1)*.5),sm=((sp-1)%2)*30,eh=Math.floor(sp*.5),em=(sp%2)*30;
+  document.getElementById('spDate').textContent=today();
+  document.getElementById('spPeriod').textContent=`SP ${sp} / 48`;
+  document.getElementById('spWindow').textContent=`${String(sh).padStart(2,'0')}:${String(sm).padStart(2,'0')} – ${String(eh).padStart(2,'0')}:${String(em).padStart(2,'0')} UTC`;
+}
+
+function startTimer(){
+  if(timer)clearInterval(timer);secs=1800;
+  timer=setInterval(()=>{secs--;const m=String(Math.floor(secs/60)).padStart(2,'0'),s=String(secs%60).padStart(2,'0');document.getElementById('countdown').textContent=`Next refresh in ${m}:${s}`;if(secs<=0)fetchAll();},1000);
+}
+
+// ─── Data fetchers ────────────────────────────────────────────────────────────
+
+async function fetchGeneration(){
+  try{
+    const url = useProxy
+      ? `${PROXY_BASE}/api/generation?date_from=${yesterday()}&date=${today()}`
+      : apiUrl('','generation/outturn/halfHourly',{settlementDateFrom:yesterday(),settlementDateTo:today()});
+    const j=await(await fetch(url)).json();
+    const data=j.data||[];if(!data.length)throw new Error('No data');
+    const slots={};
+    data.forEach(d=>{const k=d.startTime||`${d.settlementDate}-${d.settlementPeriod}`;if(!slots[k])slots[k]={time:d.startTime,sp:d.settlementPeriod,f:{}};if(d.fuelType)slots[k].f[d.fuelType]=d.generation||d.quantity||0;});
+    const keys=Object.keys(slots).sort().slice(-48);
+    const fuels=[...new Set(data.map(d=>d.fuelType).filter(Boolean))];
+    const last=slots[keys[keys.length-1]];
+    if(last){
+      const tot=Object.values(last.f).reduce((a,b)=>a+b,0),wind=last.f.WIND||0,solar=last.f.SOLAR||0;
+      document.getElementById('kGen').textContent=fmt(tot)+' MW';
+      document.getElementById('kWind').textContent=fmt(wind)+' MW';
+      document.getElementById('kSolar').textContent=fmt(solar)+' MW';
+      if(tot>0){document.getElementById('kWindP').textContent=`${((wind/tot)*100).toFixed(1)}% of total mix`;document.getElementById('kSolarP').textContent=`${((solar/tot)*100).toFixed(1)}% of total mix`;}
+      if(prevGen!=null){const dv=tot-prevGen;const el=document.getElementById('kGenD');el.textContent=(dv>=0?'+':'')+fmt(dv)+' MW vs prev';el.className='delta '+(dv>=0?'up':'down');}
+      prevGen=tot;buildMix(last.f);
+    }
+    const datasets=fuels.map(f=>({label:FL[f]||f,data:keys.map(k=>slots[k].f[f]||0),backgroundColor:FC[f]||'#64748b',borderWidth:0}));
+    const w=document.getElementById('genW');w.innerHTML='<canvas id="genC"></canvas>';
+    if(gC)gC.destroy();
+    gC=new Chart(document.getElementById('genC'),{type:'bar',data:{labels:keys.map(k=>fmtT(slots[k].time)),datasets},options:{...cdOpts(),scales:{x:{...cdOpts().scales.x,stacked:true},y:{...cdOpts().scales.y,stacked:true,ticks:{color:'#64748b',font:{size:10},callback:v=>fmt(v)+' MW'}}},plugins:{...cdOpts().plugins,tooltip:{...cdOpts().plugins.tooltip,mode:'index',callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)} MW`}}}}});
+  }catch(e){document.getElementById('genW').innerHTML=`<div class="err">⚠ ${e.message}</div>`;document.getElementById('mixW').innerHTML='<div class="err">⚠ No mix data</div>';}
+}
+
+function buildMix(fuels){
+  const entries=Object.entries(fuels).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const tot=entries.reduce((s,[,v])=>s+v,0);if(!tot)return;
+  let leg='';entries.forEach(([f,mw])=>{const p=((mw/tot)*100).toFixed(1),c=FC[f]||'#64748b';leg+=`<div class="li"><div class="ll"><div class="ldot" style="background:${c}"></div><span class="lname">${FL[f]||f}</span></div><span class="lmw">${fmt(mw)} MW</span><span class="lpct" style="color:${c}">${p}%</span></div>`;});
+  document.getElementById('mixW').innerHTML=`<div class="mix-layout"><div class="donut-w"><canvas id="mixC"></canvas></div><div class="gen-legend">${leg}</div></div>`;
+  new Chart(document.getElementById('mixC'),{type:'doughnut',data:{labels:entries.map(([f])=>FL[f]||f),datasets:[{data:entries.map(([,v])=>v),backgroundColor:entries.map(([f])=>FC[f]||'#64748b'),borderWidth:2,borderColor:'#111827'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'66%',animation:{duration:400},plugins:{legend:{display:false},tooltip:{backgroundColor:'#111827',borderColor:'#1f2e47',borderWidth:1,callbacks:{label:c=>` ${fmt(c.parsed)} MW (${((c.parsed/tot)*100).toFixed(1)}%)`}}}}});
+}
+
+async function fetchDemand(){
+  try{
+    const url = useProxy
+      ? `${PROXY_BASE}/api/demand?date=${today()}`
+      : apiUrl('','demand/outturn',{settlementDateFrom:today(),settlementDateTo:today()});
+    const j=await(await fetch(url)).json();
+    const data=(j.data||[]).sort((a,b)=>a.settlementPeriod-b.settlementPeriod);if(!data.length)throw new Error('No data');
+    const vals=data.map(d=>d.initialDemandOutturn||d.demand||d.transmission||0);
+    document.getElementById('kDem').textContent=fmt(vals[vals.length-1])+' MW';
+    const w=document.getElementById('demW');w.innerHTML='<canvas id="demC"></canvas>';
+    if(dC)dC.destroy();
+    dC=new Chart(document.getElementById('demC'),{type:'line',data:{labels:data.map(d=>spL(d.settlementPeriod)),datasets:[{data:vals,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',fill:true,tension:.4,pointRadius:2,pointHoverRadius:5}]},options:{...cdOpts(),scales:{x:cdOpts().scales.x,y:{...cdOpts().scales.y,ticks:{color:'#64748b',font:{size:10},callback:v=>fmt(v)+' MW'}}},plugins:{...cdOpts().plugins,tooltip:{...cdOpts().plugins.tooltip,callbacks:{label:c=>` Demand: ${fmt(c.parsed.y)} MW`}}}}});
+  }catch(e){document.getElementById('demW').innerHTML=`<div class="err">⚠ ${e.message}</div>`;}
+}
+
+async function fetchPrice(){
+  try{
+    const url = useProxy
+      ? `${PROXY_BASE}/api/price?date=${today()}`
+      : apiUrl('','balancing/pricing/market-index',{settlementDate:today()});
+    const j=await(await fetch(url)).json();
+    const data=(j.data||[]).filter(d=>d.price!=null).sort((a,b)=>a.settlementPeriod-b.settlementPeriod);if(!data.length)throw new Error('No data');
+    const prices=data.map(d=>d.price),last=prices[prices.length-1];
+    document.getElementById('kPrice').textContent='£'+fmt(last,2);
+    if(prevPrice!=null){const dv=last-prevPrice;const el=document.getElementById('kPriceD');el.textContent=(dv>=0?'+':'')+' £'+fmt(Math.abs(dv),2)+' vs prev';el.className='delta '+(dv>0?'down':'up');}
+    prevPrice=last;
+    const w=document.getElementById('priceW');w.innerHTML='<canvas id="priceC"></canvas>';
+    if(pC)pC.destroy();
+    pC=new Chart(document.getElementById('priceC'),{type:'line',data:{labels:data.map(d=>spL(d.settlementPeriod)),datasets:[{data:prices,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.08)',fill:true,tension:.3,pointRadius:2,pointHoverRadius:5}]},options:{...cdOpts(),scales:{x:cdOpts().scales.x,y:{...cdOpts().scales.y,ticks:{color:'#64748b',font:{size:10},callback:v=>'£'+fmt(v,0)}}},plugins:{...cdOpts().plugins,tooltip:{...cdOpts().plugins.tooltip,callbacks:{label:c=>` £${fmt(c.parsed.y,2)}/MWh`}}}}});
+    buildTable(data.slice(-12).reverse());
+  }catch(e){document.getElementById('priceW').innerHTML=`<div class="err">⚠ ${e.message}</div>`;}
+}
+
+function buildTable(rows){
+  let h='<table class="data-table"><thead><tr><th>SP</th><th>Time</th><th>Price £/MWh</th><th>Change</th><th></th></tr></thead><tbody>';
+  rows.forEach((d,i)=>{const pr=d.price,pv=rows[i+1]?rows[i+1].price:pr,dv=pr-pv,cls=dv>0?'pup':dv<0?'pdn':'',ar=dv>0?'▲':dv<0?'▼':'—',tag=i===0?'<span class="badge bg">Latest</span>':'';h+=`<tr><td>SP ${d.settlementPeriod}</td><td>${spL(d.settlementPeriod)}</td><td class="${cls}">£${fmt(pr,2)}</td><td class="${cls}">${ar} £${fmt(Math.abs(dv),2)}</td><td>${tag}</td></tr>`;});
+  document.getElementById('tableW').innerHTML=h+'</tbody></table>';
+}
+
+async function fetchImbalance(){
+  try{
+    const url = useProxy
+      ? `${PROXY_BASE}/api/imbalance?date=${today()}`
+      : apiUrl('','datasets/IMBALNGC',{settlementDateFrom:today(),settlementDateTo:today()});
+    const j=await(await fetch(url)).json();
+    const data=(j.data||[]).sort((a,b)=>a.settlementPeriod-b.settlementPeriod);if(!data.length)throw new Error('No data');
+    const vals=data.map(d=>d.imbalance||d.indicatedImbalance||d.value||0),last=vals[vals.length-1];
+    document.getElementById('kImbal').textContent=(last>=0?'+':'')+fmt(last)+' MW';
+    const w=document.getElementById('imbalW');w.innerHTML='<canvas id="imbalC"></canvas>';
+    if(iC)iC.destroy();
+    iC=new Chart(document.getElementById('imbalC'),{type:'bar',data:{labels:data.map(d=>spL(d.settlementPeriod)),datasets:[{data:vals,backgroundColor:vals.map(v=>v>=0?'rgba(16,185,129,.7)':'rgba(239,68,68,.7)'),borderWidth:0}]},options:{...cdOpts(),scales:{x:cdOpts().scales.x,y:{...cdOpts().scales.y,ticks:{color:'#64748b',font:{size:10},callback:v=>fmt(v)+' MW'}}},plugins:{...cdOpts().plugins,tooltip:{...cdOpts().plugins.tooltip,callbacks:{label:c=>` ${fmt(c.parsed.y)} MW`}}}}});
+  }catch(e){document.getElementById('imbalW').innerHTML=`<div class="err">⚠ ${e.message}</div>`;}
+}
+
+async function fetchFrequency(){
+  try{
+    const url = useProxy
+      ? `${PROXY_BASE}/api/frequency`
+      : apiUrl('','datasets/FREQ',{publishDateTimeFrom:new Date(Date.now()-3600000).toISOString().slice(0,19)+'Z'});
+    const j=await(await fetch(url)).json();
+    const data=(j.data||[]).sort((a,b)=>new Date(a.publishTime||0)-new Date(b.publishTime||0));
+    if(!data.length)throw new Error('No data');
+    renderFreq(data[data.length-1].frequency||data[data.length-1].value||50);
+  }catch{renderFreq(50,true);}
+}
+
+function renderFreq(freq,fb=false){
+  const pct=Math.min(100,Math.max(0,((freq-49.5)/1)*100)),diff=Math.abs(freq-50);
+  const sc=diff<0.05?'fn':diff<0.2?'fl':'fa',st=diff<0.05?'Normal':diff<0.2?'Deviation':'Alert';
+  const bc=sc==='fn'?'#10b981':sc==='fl'?'#f59e0b':'#ef4444';
+  document.getElementById('freqW').innerHTML=`<div class="freq-display"><div class="freq-value" style="color:${bc}">${freq.toFixed(3)}<span class="freq-unit"> Hz</span></div><div class="freq-bar-bg"><div class="freq-bar-fill" style="width:${pct}%;background:${bc}"></div></div><div class="freq-labels"><span>49.5</span><span>50.0</span><span>50.5</span></div><div class="fstatus ${sc}">${st}</div>${fb?'<div style="font-size:10px;color:var(--muted);margin-top:6px">Showing nominal — live unavailable</div>':''}<div style="font-size:11px;color:var(--muted);margin-top:10px">Target: 50.0 Hz ± 0.2<br>Low = demand exceeds supply</div></div>`;
+}
+
+async function fetchAll(){
+  updateSP();
+  document.getElementById('lastUpd').textContent='Updated '+new Date().toLocaleTimeString('en-GB');
+  await Promise.allSettled([fetchGeneration(),fetchDemand(),fetchPrice(),fetchImbalance(),fetchFrequency()]);
+  startTimer();
+}
+
+fetchAll();
+</script>
+</body>
+</html>
